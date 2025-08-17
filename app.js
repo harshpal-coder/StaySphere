@@ -25,6 +25,10 @@ const userRouter = require('./routes/user');
 
 const dburl = process.env.ATLASDB_URL;
 
+
+const MONGO_URL = "mongodb://127.0.0.1:27017/hotel";
+
+
 connectDB().then(() => {
   console.log('Database connected successfully');
 }).catch((error) => {
@@ -33,9 +37,7 @@ connectDB().then(() => {
 
 async function connectDB() {
   try {
-    await mongoose.connect(dburl, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
+    await mongoose.connect(MONGO_URL, {
     });
     console.log('MongoDB connected');
   } catch (error) {
@@ -53,7 +55,7 @@ app.use(express.static(path.join(__dirname, 'public'))); // Serve static files f
 
 
 const store = MongoStore.create({
-  mongoUrl: dburl,
+  mongoUrl: MONGO_URL,
   secret: process.env.SECRET,
   touchAfter: 24 * 3600 // Time period in seconds
 });
@@ -82,6 +84,26 @@ const sessionOptions = {
 // });
 
 
+// Make currentUser and flash messages available in all views (must be before all routes)
+
+// Ensure session and flash middleware are registered first
+app.use(session(sessionOptions));
+app.use(flash());
+
+// Make currentUser and flash messages available in all views (must be after session and flash, before all routes)
+app.use((req, res, next) => {
+  res.locals.success_msg = req.flash('success_msg');
+  res.locals.error_msg = req.flash('error_msg');
+  res.locals.currentUser = req.user;
+  next();
+});
+
+// Home page route
+app.get('/', (req, res) => {
+  res.render('home');
+});
+
+
 
 
 
@@ -105,6 +127,8 @@ passport.deserializeUser(User.deserializeUser());
 
 
 
+
+// Make currentUser and flash messages available in all views
 app.use((req, res, next) => {
   res.locals.success_msg = req.flash('success_msg');
   res.locals.error_msg = req.flash('error_msg');
