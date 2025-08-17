@@ -18,9 +18,11 @@ const reviewsRouter = require('./routes/reviews');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const flash = require('connect-flash');
+
 const passport = require('passport');
 const localStrategy = require('passport-local').Strategy;
-const User = require('./models/user.js'); 
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const User = require('./models/user.js');
 const userRouter = require('./routes/user');
 
 const dburl = process.env.ATLASDB_URL;
@@ -118,11 +120,44 @@ app.get('/', (req, res) => {
 app.use(session(sessionOptions));
 app.use(flash()); // Use flash messages for notifications
 
+
 app.use(passport.initialize());
 app.use(passport.session());
 passport.use(new localStrategy(User.authenticate()));
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
+
+// Google OAuth Strategy
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: '/auth/google/callback',
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    // Try to find user by googleId
+    let user = await User.findOne({ googleId: profile.id });
+    if (!user) {
+      // If not found, try to find by email
+      user = await User.findOne({ email: profile.emails[0].value });
+      if (user) {
+        // Link Google account to existing user
+        user.googleId = profile.id;
+        await user.save();
+      } else {
+        // Create new user
+        user = new User({
+          username: profile.displayName,
+          email: profile.emails[0].value,
+          googleId: profile.id
+        });
+        await user.save();
+      }
+    }
+    return done(null, user);
+  } catch (err) {
+    return done(err, null);
+  }
+}));
 
 
 
