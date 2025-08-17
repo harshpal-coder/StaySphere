@@ -18,16 +18,4 @@ router.get('/logout', userController.logout);
 
 
 module.exports = router;
-// Google OAuth login
-router.get('/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
 
-// Google OAuth callback
-router.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login', failureFlash: true }),
-  (req, res) => {
-    req.flash('success_msg', 'Welcome! You are now logged in with Google.');
-    res.redirect('/listings');
-  }
-);

@@ -21,14 +21,14 @@ const flash = require('connect-flash');
 
 const passport = require('passport');
 const localStrategy = require('passport-local').Strategy;
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
+
 const User = require('./models/user.js');
 const userRouter = require('./routes/user');
 
 const dburl = process.env.ATLASDB_URL;
 
 
-const MONGO_URL = "mongodb://127.0.0.1:27017/hotel";
+// const MONGO_URL = "mongodb://127.0.0.1:27017/hotel";
 
 
 connectDB().then(() => {
@@ -39,7 +39,7 @@ connectDB().then(() => {
 
 async function connectDB() {
   try {
-    await mongoose.connect(MONGO_URL, {
+    await mongoose.connect(dburl, {
     });
     console.log('MongoDB connected');
   } catch (error) {
@@ -57,7 +57,7 @@ app.use(express.static(path.join(__dirname, 'public'))); // Serve static files f
 
 
 const store = MongoStore.create({
-  mongoUrl: MONGO_URL,
+  mongoUrl: dburl,
   secret: process.env.SECRET,
   touchAfter: 24 * 3600 // Time period in seconds
 });
@@ -127,37 +127,7 @@ passport.use(new localStrategy(User.authenticate()));
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
-// Google OAuth Strategy
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: '/auth/google/callback',
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    // Try to find user by googleId
-    let user = await User.findOne({ googleId: profile.id });
-    if (!user) {
-      // If not found, try to find by email
-      user = await User.findOne({ email: profile.emails[0].value });
-      if (user) {
-        // Link Google account to existing user
-        user.googleId = profile.id;
-        await user.save();
-      } else {
-        // Create new user
-        user = new User({
-          username: profile.displayName,
-          email: profile.emails[0].value,
-          googleId: profile.id
-        });
-        await user.save();
-      }
-    }
-    return done(null, user);
-  } catch (err) {
-    return done(err, null);
-  }
-}));
+
 
 
 
